@@ -1,0 +1,88 @@
+import csv
+import os 
+
+# Імена файлів, з якими працюємо
+input_filename = 'GDP_USA_1991_2019.csv'
+output_filename = 'gdp_results.csv'
+
+# Початкові значення для пошуку min/max
+min_gdp = float('inf')  # Початкове значення - нескінченність
+max_gdp = float('-inf') # Початкове значення - мінус нескінченність
+min_year = ""
+max_year = ""
+
+# Прапор для перевірки, чи були дані знайдені
+flag = False 
+
+try:
+    # --- 1. Читання файлу, вивід на екран та аналіз ---
+    with open(input_filename, mode='r', encoding='utf-8') as infile:
+        
+        # Використовуємо DictReader, вказуємо роздільник ';'
+        reader = csv.DictReader(infile, delimiter=';') 
+        
+        print(f"--- Вміст файлу {input_filename} ---")
+        print(f"{'Рік':<10} | {'ВВП на душу населення (US$)'}")
+        print("-" * 40)
+        
+        # Порядково обробляємо дані з файлу
+        for row in reader:
+            # Перевіряємо, що у рядку є потрібні стовпці 'Year' та 'GDP'
+            if 'Year' in row and 'GDP' in row:
+                # Виводимо поточний рядок на екран
+                print(f"{row['Year']:<10} | {row['GDP']}")
+                
+                try:
+                    # Для коректного підрахунку, замінюємо кому ',' на крапку '.'
+                    gdp_str_with_dot = row['GDP'].replace(',', '.')
+                    # Перетворюємо рядок на число (float)
+                    gdp_value = float(gdp_str_with_dot)
+                    
+                    flag = True # Дані успішно прочитані
+                    
+                    # Пошук та оновлення мінімального значення
+                    if gdp_value < min_gdp:
+                        min_gdp = gdp_value
+                        min_year = row['Year']
+                        
+                    # Пошук та оновлення максимального значення
+                    if gdp_value > max_gdp:
+                        max_gdp = gdp_value
+                        max_year = row['Year']
+                            
+                except (ValueError, TypeError):
+                    # Ігноруємо рядки, де 'GDP' не є числом
+                    pass 
+                
+    # --- 2. Виведення результатів пошуку ---
+    print("\n--- Результати пошуку ---")
+    
+    # Якщо прапор спрацював (flag == True), виводимо результат
+    if flag: 
+        print(f"Найнижчий ВВП: {min_gdp} (Рік: {min_year})")
+        print(f"Найвищий ВВП:  {max_gdp} (Рік: {max_year})")
+        
+        # --- 3. Запис результату в новий .csv файл ---
+        with open(output_filename, mode='w', newline='', encoding='utf-8') as outfile:
+            
+            # Вказуємо роздільник ';' для вихідного файлу
+            writer = csv.writer(outfile, delimiter=';') 
+            
+            # Записуємо заголовки
+            writer.writerow(['Показник', 'Рік', 'ВВП на душу населення (US$)'])
+            # Записуємо знайдені min та max
+            writer.writerow(['Найнижчий', min_year, min_gdp])
+            writer.writerow(['Найвищий', max_year, max_gdp])
+        
+        print(f"\nРезультати пошуку записано у файл: {output_filename}")
+        
+    else:
+        # Якщо дані не були знайдені
+        print("Не вдалося знайти коректні дані для аналізу.")
+
+# --- 4. Обробка помилки, якщо вхідний файл не знайдено ---
+except FileNotFoundError:
+    print(f"ПОМИЛКА: Файл '{input_filename}' не знайдено!")
+except Exception as e:
+    # Обробка інших можливих помилок
+    print(f"Сталася непередбачена помилка: {e}")
