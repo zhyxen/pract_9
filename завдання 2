@@ -1,0 +1,172 @@
+import json
+import os
+
+FILE_NAME = 'phonebook.json'
+RESULT_FILE_NAME = 'search_results.json'
+
+# Функції для роботи з JSON-файлом
+def load_data():
+    """Завантаження даних із JSON-файлу. Обробка помилок."""
+    try:
+        with open(FILE_NAME, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"contacts": []}
+    except json.JSONDecodeError:
+        return {"contacts": []}
+
+def save_data(data):
+    """Збереження даних у JSON-файл."""
+    try:
+        with open(FILE_NAME, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        return True
+    except Exception:
+        return False
+
+# Функції, що викликаються користувачем
+def display_content():
+    """Виведення вмісту записника на екран."""
+    data = load_data()
+    if data.get('contacts'):
+        for i, contact in enumerate(data['contacts']):
+            print(f"[{i+1}] Прізвище: {contact['surname']}, Телефон: {contact['phone']}")
+    else:
+        print("Записник порожній.")
+
+def add_record():
+    """Додавання нового запису (контакту) у JSON-файл."""
+    surname = input("Введіть прізвище: ").strip()
+    phone = input("Введіть номер телефону: ").strip()
+    
+    if not surname or not phone: return
+
+    data = load_data()
+    new_contact = {"surname": surname, "phone": phone}
+    data['contacts'].append(new_contact)
+    
+    if save_data(data):
+        print(f"Успішно додано контакт: {surname}.")
+
+def delete_record():
+    """Видалення запису за прізвищем."""
+    search_term = input("Введіть прізвище для видалення: ").strip()
+    data = load_data()
+    initial_count = len(data.get('contacts', []))
+    
+    # Фільтрування: створення нового списку без записів, що відповідають умові
+    data['contacts'] = [
+        contact for contact in data.get('contacts', []) 
+        if contact.get('surname', '').lower() != search_term.lower()
+    ]
+    
+    deleted_count = initial_count - len(data['contacts'])
+
+    if deleted_count > 0:
+        if save_data(data):
+            print(f"Успішно видалено {deleted_count} запис(и).")
+    else:
+        print(f"Контакт не знайдено.")
+
+def search_by_field():
+    """Пошук даних за вибраним полем (прізвище або телефон)."""
+    print("\n--- Пошук контакту ---")
+    field = input("Шукати за (1) Прізвищем чи (2) Телефоном? Введіть 1 або 2: ").strip()
+    
+    if field not in ['1', '2']: return
+    
+    if field == '1':
+        search_key, search_label = 'surname', 'прізвищем'
+    else:
+        search_key, search_label = 'phone', 'телефоном'
+        
+    search_term = input(f"Введіть значення для пошуку за {search_label}: ").strip()
+    
+    data = load_data()
+    found_contacts = []
+    
+    for contact in data.get('contacts', []):
+        if contact.get(search_key, '').lower() == search_term.lower():
+            found_contacts.append(contact)
+
+    if found_contacts:
+        print(f"\nЗнайдено {len(found_contacts)} контакт(ів):")
+        for contact in found_contacts:
+            print(f"Прізвище: {contact['surname']}, Телефон: {contact['phone']}")
+    else:
+        print("Контакти не знайдено.")
+
+# Розв'язання завдань за варіантом
+def solve_variant_task():
+    """Виконання спеціалізованих пошукових завдань (А і Б) та запис результату в окремий JSON-файл."""
+    print("\n--- Розв'язання завдань варіанту ---")
+    data = load_data()
+    results = {"search_queries": []}
+
+    # Завдання А: Пошук телефону за прізвищем
+    surname_to_find = input("Введіть прізвище для пошуку його телефону: ").strip()
+    found_phone = next((c['phone'] for c in data.get('contacts', []) if c['surname'].lower() == surname_to_find.lower()), None)
+    
+    print(f"Завдання А: Телефон для особи '{surname_to_find}': {found_phone if found_phone else 'Не знайдено'}")
+    
+    results['search_queries'].append({
+        "query_type": "Phone by Surname",
+        "search_term": surname_to_find,
+        "result": found_phone if found_phone else "Не знайдено"
+    })
+
+    # Завдання Б: Пошук прізвища за номером телефону
+    phone_to_find = input("Введіть номер телефону для пошуку власника: ").strip()
+    found_surname = next((c['surname'] for c in data.get('contacts', []) if c['phone'].strip() == phone_to_find), None)
+
+    print(f"Завдання Б: Власник телефону '{phone_to_find}': {found_surname if found_surname else 'Не знайдено'}")
+
+    results['search_queries'].append({
+        "query_type": "Surname by Phone",
+        "search_term": phone_to_find,
+        "result": found_surname if found_surname else "Не знайдено"
+    })
+
+    # Запис результатів у файл
+    try:
+        with open(RESULT_FILE_NAME, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=4, ensure_ascii=False)
+        print(f"\nРезультати виконання завдань записано у файл '{RESULT_FILE_NAME}'.")
+    except Exception:
+        pass
+
+# Головний діалоговий цикл
+def main_menu():
+    """Головне меню програми."""
+    while True:
+        print("\n" + "="*40)
+        print("МЕНЮ РОБОТИ З JSON-ЗАПИСНИКОМ")
+        print("="*40)
+        print("1. Вивести вміст записника на екран")
+        print("2. Додати новий запис")
+        print("3. Видалити запис (за прізвищем)")
+        print("4. Пошук даних (за полем)")
+        print("5. Розв'язати завдання варіанту (пошук A/Б) та записати результат")
+        print("0. Вихід")
+        print("-" * 40)
+        
+        choice = input("Введіть номер опції: ").strip()
+        
+        if choice == '1':
+            display_content()
+        elif choice == '2':
+            add_record()
+        elif choice == '3':
+            delete_record()
+        elif choice == '4':
+            search_by_field()
+        elif choice == '5':
+            solve_variant_task()
+        elif choice == '0':
+            print("Завершення роботи.")
+            break
+        else:
+            print("Невірна опція.")
+
+if __name__ == "__main__":
+    main_menu()
